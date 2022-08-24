@@ -39,12 +39,12 @@ export class CheqdLedgerSevice implements GenericIndyLedgerService {
     this.indyPoolService = indyPoolService
   }
 
-  // I don't think we would need to manually, if at all, deal with pools
+  // TODO-CHEQD: I don't think we would need to manually, if at all, deal with pools
   public connectToPools(): Promise<number[]> {
     throw new Error('Method not implemented.')
   }
 
-  // TODO: implement
+  // TODO-CHEQD: implement
   public registerPublicDid(
     submitterDid: string,
     targetDid: string,
@@ -55,22 +55,22 @@ export class CheqdLedgerSevice implements GenericIndyLedgerService {
     throw new Error('Method not implemented.')
   }
 
-  // TODO: implement
+  // TODO-CHEQD: implement
   public getPublicDid(did: string): Promise<Indy.GetNymResponse> {
     throw new Error('Method not implemented.')
   }
 
-  // TODO: implement
+  // TODO-CHEQD: implement
   public registerSchema(did: string, schemaTemplate: SchemaTemplate): Promise<Indy.Schema> {
     throw new Error('Method not implemented.')
   }
 
-  // TODO: implement
+  // TODO-CHEQD: implement
   public getSchema(schemaId: string): Promise<Indy.Schema> {
     throw new Error('Method not implemented.')
   }
 
-  // TODO: implement
+  // TODO-CHEQD: implement
   public registerCredentialDefinition(
     did: string,
     credentialDefinitionTemplate: CredentialDefinitionTemplate
@@ -78,7 +78,7 @@ export class CheqdLedgerSevice implements GenericIndyLedgerService {
     throw new Error('Method not implemented.')
   }
 
-  // TODO: implement
+  // TODO-CHEQD: implement
   public getCredentialDefinition(credentialDefinitionId: string): Promise<Indy.CredDef> {
     throw new Error('Method not implemented.')
   }

@@ -1,5 +1,6 @@
 import type { DependencyManager } from '../../plugins'
-import type { SchemaTemplate, CredentialDefinitionTemplate } from './services'
+import type { GenericIndyLedgerService } from './models/IndyLedgerService'
+import { SchemaTemplate, CredentialDefinitionTemplate, CheqdLedgerSevice } from './services'
 import type { NymRole } from 'indy-sdk'
 
 import { InjectionSymbols } from '../../constants'
@@ -12,7 +13,7 @@ import { IndyPoolService, IndyLedgerService } from './services'
 @module()
 @injectable()
 export class LedgerModule {
-  private ledgerService: IndyLedgerService
+  private ledgerService: GenericIndyLedgerService
   private wallet: Wallet
 
   public constructor(@inject(InjectionSymbols.Wallet) wallet: Wallet, ledgerService: IndyLedgerService) {
@@ -94,7 +95,9 @@ export class LedgerModule {
     dependencyManager.registerContextScoped(LedgerModule)
 
     // Services
-    dependencyManager.registerSingleton(IndyLedgerService)
+    dependencyManager.registerSingleton(CheqdLedgerSevice)
+
+    // TODO-CHEQD: do we need this?
     dependencyManager.registerSingleton(IndyPoolService)
   }
 }
