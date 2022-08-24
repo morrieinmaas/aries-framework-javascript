@@ -1,5 +1,6 @@
 import type { Logger } from '../../../logger'
 import type { AcceptanceMechanisms, AuthorAgreement, IndyPool } from '../IndyPool'
+import type { GenericIndyLedgerService } from '../models/IndyLedgerService'
 import type {
   default as Indy,
   CredDef,
@@ -26,7 +27,7 @@ import { LedgerError } from '../error/LedgerError'
 import { IndyPoolService } from './IndyPoolService'
 
 @injectable()
-export class IndyLedgerService {
+export class IndyLedgerService implements GenericIndyLedgerService {
   private wallet: IndyWallet
   private indy: typeof Indy
   private logger: Logger
