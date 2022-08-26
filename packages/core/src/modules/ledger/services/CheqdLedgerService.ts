@@ -18,6 +18,7 @@ import type Indy from 'indy-sdk'
 import { DIDModule, createCheqdSDK } from '@cheqd/sdk'
 import { createSignInputsFromImportableEd25519Key } from '@cheqd/sdk/build/utils'
 import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing'
+import { subscribeOn } from 'rxjs'
 
 import { AgentConfig } from '../../../agent/AgentConfig'
 import { AriesFrameworkError } from '../../../error'
@@ -27,7 +28,6 @@ import { Key } from '../../dids'
 import { IndyIssuerService } from '../../indy/services/IndyIssuerService'
 
 import { IndyPoolService } from './IndyPoolService'
-import { subscribeOn } from 'rxjs'
 
 // --------------
 
