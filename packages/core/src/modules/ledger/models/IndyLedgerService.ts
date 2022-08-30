@@ -8,6 +8,8 @@ import type {
 } from '@aries-framework/core'
 import type { CredDef, GetNymResponse, NymRole, Schema } from 'indy-sdk'
 
+export const GenericIndyLedgerService = Symbol('GenericIndyLedgerService')
+
 export interface GenericIndyLedgerService {
   connectToPools(): Promise<Array<number>>
 

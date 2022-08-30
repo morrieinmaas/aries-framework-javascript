@@ -42,7 +42,7 @@ export type IdentifierPayload = Partial<MsgCreateDidPayload> | Partial<MsgUpdate
 // --------------
 
 @injectable()
-export class CheqdLedgerSevice implements GenericIndyLedgerService {
+export class CheqdLedgerService implements GenericIndyLedgerService {
   private wallet: IndyWallet
   private indy: typeof Indy
   private logger: Logger

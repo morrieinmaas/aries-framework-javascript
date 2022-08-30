@@ -7,10 +7,10 @@ import type { default as Indy } from 'indy-sdk'
 import { AgentConfig } from '../../../agent/AgentConfig'
 import { AriesFrameworkError } from '../../../error/AriesFrameworkError'
 import { IndySdkError } from '../../../error/IndySdkError'
-import { injectable } from '../../../plugins'
+import { inject, injectable } from '../../../plugins'
 import { isIndyError } from '../../../utils/indyError'
 import { IndyWallet } from '../../../wallet/IndyWallet'
-import { IndyLedgerService } from '../../ledger'
+import { GenericIndyLedgerService } from '../../ledger/models/IndyLedgerService'
 
 import { IndyUtilitiesService } from './IndyUtilitiesService'
 
@@ -24,14 +24,14 @@ export class IndyRevocationService {
   private indy: typeof Indy
   private indyUtilitiesService: IndyUtilitiesService
   private fileSystem: FileSystem
-  private ledgerService: IndyLedgerService
+  private ledgerService: GenericIndyLedgerService
   private logger: Logger
   private wallet: IndyWallet
 
   public constructor(
     agentConfig: AgentConfig,
     indyUtilitiesService: IndyUtilitiesService,
-    ledgerService: IndyLedgerService,
+    @inject(GenericIndyLedgerService) ledgerService: GenericIndyLedgerService,
     wallet: IndyWallet
   ) {
     this.fileSystem = agentConfig.fileSystem

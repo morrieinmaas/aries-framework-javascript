@@ -34,7 +34,7 @@ import { Wallet } from '../../../../wallet/Wallet'
 import { ConnectionService } from '../../../connections'
 import { DidResolverService, findVerificationMethodByKeyType } from '../../../dids'
 import { IndyHolderService, IndyIssuerService } from '../../../indy'
-import { IndyLedgerService } from '../../../ledger'
+import { GenericIndyLedgerService } from '../../../ledger/models/IndyLedgerService'
 import { CredentialProblemReportError, CredentialProblemReportReason } from '../../errors'
 import { CredentialFormatSpec } from '../../models/CredentialFormatSpec'
 import { CredentialPreviewAttribute } from '../../models/CredentialPreviewAttribute'
@@ -53,7 +53,7 @@ const INDY_CRED = 'hlindy/cred@v2.0'
 @injectable()
 export class IndyCredentialFormatService extends CredentialFormatService<IndyCredentialFormat> {
   private indyIssuerService: IndyIssuerService
-  private indyLedgerService: IndyLedgerService
+  private indyLedgerService: GenericIndyLedgerService
   private indyHolderService: IndyHolderService
   private connectionService: ConnectionService
   private didResolver: DidResolverService
@@ -64,7 +64,7 @@ export class IndyCredentialFormatService extends CredentialFormatService<IndyCre
     credentialRepository: CredentialRepository,
     eventEmitter: EventEmitter,
     indyIssuerService: IndyIssuerService,
-    indyLedgerService: IndyLedgerService,
+    @inject(GenericIndyLedgerService) indyLedgerService: GenericIndyLedgerService,
     indyHolderService: IndyHolderService,
     connectionService: ConnectionService,
     didResolver: DidResolverService,

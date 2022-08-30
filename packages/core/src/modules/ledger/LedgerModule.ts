@@ -1,6 +1,5 @@
 import type { DependencyManager } from '../../plugins'
-import type { GenericIndyLedgerService } from './models/IndyLedgerService'
-import { SchemaTemplate, CredentialDefinitionTemplate, CheqdLedgerSevice } from './services'
+import type { SchemaTemplate, CredentialDefinitionTemplate } from './services'
 import type { NymRole } from 'indy-sdk'
 
 import { InjectionSymbols } from '../../constants'
@@ -8,7 +7,8 @@ import { AriesFrameworkError } from '../../error'
 import { injectable, module, inject } from '../../plugins'
 import { Wallet } from '../../wallet/Wallet'
 
-import { IndyPoolService, IndyLedgerService } from './services'
+import { GenericIndyLedgerService } from './models/IndyLedgerService'
+import { CheqdLedgerService, IndyPoolService, IndyLedgerService } from './services'
 
 @module()
 @injectable()
@@ -95,7 +95,8 @@ export class LedgerModule {
     dependencyManager.registerContextScoped(LedgerModule)
 
     // Services
-    dependencyManager.registerSingleton(CheqdLedgerSevice)
+    dependencyManager.registerSingleton(GenericIndyLedgerService, CheqdLedgerService)
+    dependencyManager.registerSingleton(IndyLedgerService)
 
     // TODO-CHEQD: do we need this?
     dependencyManager.registerSingleton(IndyPoolService)
