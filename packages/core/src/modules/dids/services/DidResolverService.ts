@@ -5,7 +5,7 @@ import type { DidResolutionOptions, DidResolutionResult, ParsedDid } from '../ty
 import { AgentConfig } from '../../../agent/AgentConfig'
 import { AriesFrameworkError } from '../../../error'
 import { injectable } from '../../../plugins'
-import { IndyLedgerService } from '../../ledger'
+import { IndyLedgerService } from '../../ledger/services/IndyLedgerService'
 import { parseDid } from '../domain/parse'
 import { KeyDidResolver } from '../methods/key/KeyDidResolver'
 import { PeerDidResolver } from '../methods/peer/PeerDidResolver'
