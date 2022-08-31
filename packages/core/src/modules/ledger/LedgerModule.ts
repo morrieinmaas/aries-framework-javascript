@@ -16,7 +16,10 @@ export class LedgerModule {
   private ledgerService: GenericIndyLedgerService
   private wallet: Wallet
 
-  public constructor(@inject(InjectionSymbols.Wallet) wallet: Wallet, ledgerService: IndyLedgerService) {
+  public constructor(
+    @inject(InjectionSymbols.Wallet) wallet: Wallet,
+    @inject(GenericIndyLedgerService) ledgerService: GenericIndyLedgerService
+  ) {
     this.ledgerService = ledgerService
     this.wallet = wallet
   }

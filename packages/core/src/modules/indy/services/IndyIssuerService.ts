@@ -17,6 +17,11 @@ import { IndySdkError } from '../../../error/IndySdkError'
 import { injectable } from '../../../plugins'
 import { isIndyError } from '../../../utils/indyError'
 import { IndyWallet } from '../../../wallet/IndyWallet'
+import {
+  indyCredentialDefinitionIdFromCredentialDefinitionResource,
+  indySchemaIdFromSchemaResource,
+  resourceRegistry,
+} from '../../ledger/cheqd/cheqdIndyUtils'
 
 import { IndyUtilitiesService } from './IndyUtilitiesService'
 
@@ -85,9 +90,22 @@ export class IndyIssuerService {
    * @param credentialDefinitionId The credential definition to create an offer for
    * @returns The created credential offer
    */
-  public async createCredentialOffer(credentialDefinitionId: CredDefId) {
+  public async createCredentialOffer(credentialDefinitionId: CredDefId): Promise<Indy.CredOffer> {
+    const resource = resourceRegistry.credentialDefinitions[credentialDefinitionId]
+
+    if (!resource) {
+      throw new Error('Credential definition not found')
+    }
+
+    const credDefId = indyCredentialDefinitionIdFromCredentialDefinitionResource(resource)
     try {
-      return await this.indy.issuerCreateCredentialOffer(this.wallet.handle, credentialDefinitionId)
+      const offer = await this.indy.issuerCreateCredentialOffer(this.wallet.handle, credDefId)
+
+      return {
+        ...offer,
+        cred_def_id: credentialDefinitionId,
+        schema_id: resource.data.AnonCredsCredDef.schemaId,
+      }
     } catch (error) {
       throw isIndyError(error) ? new IndySdkError(error) : error
     }
@@ -105,6 +123,23 @@ export class IndyIssuerService {
     revocationRegistryId,
     tailsFilePath,
   }: CreateCredentialOptions): Promise<[Cred, CredRevocId]> {
+    const credentialDefinitionResource = resourceRegistry.credentialDefinitions[credentialRequest.cred_def_id]
+    const schemaResource = resourceRegistry.schemas[credentialDefinitionResource.data.AnonCredsCredDef.schemaId]
+
+    if (!credentialDefinitionResource) throw new Error('no credential definition found')
+    if (!schemaResource) throw new Error('no credential definition found')
+
+    const offer: Indy.CredOffer = {
+      ...credentialOffer,
+      cred_def_id: indyCredentialDefinitionIdFromCredentialDefinitionResource(credentialDefinitionResource),
+      schema_id: indySchemaIdFromSchemaResource(schemaResource),
+    }
+
+    const request: Indy.CredReq = {
+      ...credentialRequest,
+      cred_def_id: indyCredentialDefinitionIdFromCredentialDefinitionResource(credentialDefinitionResource),
+    }
+
     try {
       // Indy SDK requires tailsReaderHandle. Use null if no tailsFilePath is present
       const tailsReaderHandle = tailsFilePath ? await this.indyUtilitiesService.createTailsReader(tailsFilePath) : 0
@@ -115,14 +150,21 @@ export class IndyIssuerService {
 
       const [credential, credentialRevocationId] = await this.indy.issuerCreateCredential(
         this.wallet.handle,
-        credentialOffer,
-        credentialRequest,
+        offer,
+        request,
         credentialValues,
         revocationRegistryId ?? null,
         tailsReaderHandle
       )
 
-      return [credential, credentialRevocationId]
+      return [
+        {
+          ...credential,
+          cred_def_id: credentialOffer.cred_def_id,
+          schema_id: credentialOffer.schema_id,
+        },
+        credentialRevocationId,
+      ]
     } catch (error) {
       throw isIndyError(error) ? new IndySdkError(error) : error
     }

@@ -7,6 +7,11 @@ import { IndySdkError } from '../../../error/IndySdkError'
 import { injectable } from '../../../plugins'
 import { isIndyError } from '../../../utils/indyError'
 import { IndyWallet } from '../../../wallet/IndyWallet'
+import {
+  indyCredentialDefinitionIdFromCredentialDefinitionResource,
+  indySchemaIdFromSchemaResource,
+  resourceRegistry,
+} from '../../ledger/cheqd/cheqdIndyUtils'
 
 import { IndyRevocationService } from './IndyRevocationService'
 
@@ -87,13 +92,31 @@ export class IndyHolderService {
     credentialId,
     revocationRegistryDefinition,
   }: StoreCredentialOptions): Promise<Indy.CredentialId> {
+    const credentialDefinitionResource = resourceRegistry.credentialDefinitions[credentialDefinition.id]
+    const schemaResource = resourceRegistry.schemas[credentialDefinition.schemaId]
+
+    if (!credentialDefinitionResource) throw new Error('no credential definition found')
+    if (!schemaResource) throw new Error('no credential definition found')
+
+    const credDef: Indy.CredDef = {
+      ...credentialDefinition,
+      id: indyCredentialDefinitionIdFromCredentialDefinitionResource(credentialDefinitionResource),
+      schemaId: indySchemaIdFromSchemaResource(schemaResource),
+    }
+
+    const cred: Indy.Cred = {
+      ...credential,
+      cred_def_id: indyCredentialDefinitionIdFromCredentialDefinitionResource(credentialDefinitionResource),
+      schema_id: indySchemaIdFromSchemaResource(schemaResource),
+    }
+
     try {
       return await this.indy.proverStoreCredential(
         this.wallet.handle,
         credentialId ?? null,
         credentialRequestMetadata,
-        credential,
-        credentialDefinition,
+        cred,
+        credDef,
         revocationRegistryDefinition ?? null
       )
     } catch (error) {
@@ -136,14 +159,40 @@ export class IndyHolderService {
     credentialOffer,
     credentialDefinition,
   }: CreateCredentialRequestOptions): Promise<[Indy.CredReq, Indy.CredReqMetadata]> {
+    const credentialDefinitionResource = resourceRegistry.credentialDefinitions[credentialDefinition.id]
+    const schemaResource = resourceRegistry.schemas[credentialDefinition.schemaId]
+
+    if (!credentialDefinitionResource) throw new Error('no credential definition found')
+    if (!schemaResource) throw new Error('no credential definition found')
+
+    const offer: Indy.CredOffer = {
+      ...credentialOffer,
+      cred_def_id: indyCredentialDefinitionIdFromCredentialDefinitionResource(credentialDefinitionResource),
+      schema_id: indySchemaIdFromSchemaResource(schemaResource),
+    }
+
+    const credDef: Indy.CredDef = {
+      ...credentialDefinition,
+      id: indyCredentialDefinitionIdFromCredentialDefinitionResource(credentialDefinitionResource),
+      schemaId: indySchemaIdFromSchemaResource(schemaResource),
+    }
+
     try {
-      return await this.indy.proverCreateCredentialReq(
+      const [request, metadata] = await this.indy.proverCreateCredentialReq(
         this.wallet.handle,
         holderDid,
-        credentialOffer,
-        credentialDefinition,
+        offer,
+        credDef,
         this.wallet.masterSecretId
       )
+
+      return [
+        {
+          ...request,
+          cred_def_id: credentialDefinition.id,
+        },
+        metadata,
+      ]
     } catch (error) {
       this.logger.error(`Error creating Indy Credential Request`, {
         error,

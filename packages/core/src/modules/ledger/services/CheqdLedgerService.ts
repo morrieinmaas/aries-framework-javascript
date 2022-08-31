@@ -1,4 +1,5 @@
 import type { Logger } from '../../../logger'
+import type { CredentialDefinitionResource, SchemaResource } from '../cheqd/cheqdIndyUtils'
 import type { GenericIndyLedgerService } from '../models/IndyLedgerService'
 import type {
   IndyEndpointAttrib,
@@ -10,7 +11,7 @@ import type {
 } from './IndyLedgerService'
 import type { CheqdSDK, ICheqdSDKOptions } from '@cheqd/sdk'
 import type { AbstractCheqdSDKModule } from '@cheqd/sdk/build/modules/_'
-import type { DidStdFee, IContext } from '@cheqd/sdk/build/types'
+import type { DidStdFee } from '@cheqd/sdk/build/types'
 import type { TImportableEd25519Key } from '@cheqd/sdk/build/utils'
 import type { MsgCreateDidPayload, MsgUpdateDidPayload } from '@cheqd/ts-proto/cheqd/v1/tx'
 import type Indy from 'indy-sdk'
@@ -18,14 +19,21 @@ import type Indy from 'indy-sdk'
 import { DIDModule, createCheqdSDK } from '@cheqd/sdk'
 import { createSignInputsFromImportableEd25519Key } from '@cheqd/sdk/build/utils'
 import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing'
-import { subscribeOn } from 'rxjs'
 
 import { AgentConfig } from '../../../agent/AgentConfig'
+import { KeyType } from '../../../crypto'
 import { AriesFrameworkError } from '../../../error'
 import { injectable } from '../../../plugins'
+import { uuid } from '../../../utils/uuid'
 import { IndyWallet } from '../../../wallet/IndyWallet'
 import { Key } from '../../dids'
 import { IndyIssuerService } from '../../indy/services/IndyIssuerService'
+import {
+  indyCredentialDefinitionFromCredentialDefinitionResource,
+  indySchemaFromSchemaResource,
+  indySchemaIdFromSchemaResource,
+  resourceRegistry,
+} from '../cheqd/cheqdIndyUtils'
 
 import { IndyPoolService } from './IndyPoolService'
 
@@ -148,27 +156,132 @@ export class CheqdLedgerService implements GenericIndyLedgerService {
     throw new Error('Method not implemented.')
   }
 
-  // TODO-CHEQD: implement
-  public registerSchema(did: string, schemaTemplate: SchemaTemplate): Promise<Indy.Schema> {
-    throw new Error('Method not implemented.')
+  // TODO-CHEQD: integrate with cheqd-sdk
+  public async registerSchema(indyDid: string, schemaTemplate: SchemaTemplate): Promise<Indy.Schema> {
+    // This part transform the indy did into the cheqd did in a hacky way. In the future we should pass the cheqd did directly,
+    // But that requires better integration with the did module
+    // Get the verkey for the provided indy did
+    const verkey = await this.indy.keyForLocalDid(this.wallet.handle, indyDid)
+    const cheqdDidIdentifier = Key.fromPublicKeyBase58(verkey, KeyType.Ed25519).fingerprint.substring(0, 32)
+
+    const resourceId = uuid()
+    const resource: SchemaResource = {
+      _indyData: {
+        did: indyDid,
+      },
+      header: {
+        collectionId: cheqdDidIdentifier,
+        id: resourceId,
+        name: schemaTemplate.name,
+        resourceType: 'CL-Schema',
+      },
+      data: {
+        AnonCredsSchema: {
+          attr_names: schemaTemplate.attributes,
+          name: schemaTemplate.name,
+          version: schemaTemplate.version,
+        },
+        AnonCredsObjectMetadata: {
+          objectFamily: 'anoncreds',
+          objectFamilyVersion: 'v2',
+          objectType: '2',
+          objectURI: `did:cheqd:testnet:${cheqdDidIdentifier}/resources/${resourceId}`,
+          publisherDid: `did:cheqd:testnet:${cheqdDidIdentifier}`,
+        },
+      },
+    } as const
+
+    // Register schema in local registry
+    resourceRegistry.schemas[resource.data.AnonCredsObjectMetadata.objectURI] = resource
+
+    return indySchemaFromSchemaResource(resource)
   }
 
-  // TODO-CHEQD: implement
-  public getSchema(schemaId: string): Promise<Indy.Schema> {
-    throw new Error('Method not implemented.')
+  // TODO-CHEQD: integrate with cheqd-sdk
+  public async getSchema(schemaId: string): Promise<Indy.Schema> {
+    const resource = resourceRegistry.schemas[schemaId]
+
+    if (!resource) {
+      throw new AriesFrameworkError(`Schema with id ${schemaId} not found`)
+    }
+
+    return indySchemaFromSchemaResource(resource)
   }
 
-  // TODO-CHEQD: implement
-  public registerCredentialDefinition(
-    did: string,
+  // TODO-CHEQD: integrate with cheqd sdk
+  public async registerCredentialDefinition(
+    indyDid: string,
     credentialDefinitionTemplate: CredentialDefinitionTemplate
   ): Promise<Indy.CredDef> {
-    throw new Error('Method not implemented.')
+    const { schema, tag, signatureType, supportRevocation } = credentialDefinitionTemplate
+
+    // This part transform the indy did into the cheqd did in a hacky way. In the future we should pass the cheqd did directly,
+    // But that requires better integration with the did module
+    // Get the verkey for the provided indy did
+    const verkey = await this.indy.keyForLocalDid(this.wallet.handle, indyDid)
+    const cheqdDidIdentifier = Key.fromPublicKeyBase58(verkey, KeyType.Ed25519).fingerprint.substring(0, 32)
+
+    const schemaResource = resourceRegistry.schemas[schema.id]
+    if (!schemaResource) {
+      throw new AriesFrameworkError(`Schema with id ${schema.id} not found`)
+    }
+
+    const indySchema: Indy.Schema = {
+      ...schema,
+      id: indySchemaIdFromSchemaResource(schemaResource),
+    }
+
+    const [credDefId, credentialDefinition] = await this.indy.issuerCreateAndStoreCredentialDef(
+      this.wallet.handle,
+      indyDid,
+      indySchema,
+      tag,
+      signatureType,
+      {
+        support_revocation: supportRevocation,
+      }
+    )
+
+    console.log(credDefId)
+
+    const resourceId = uuid()
+
+    const resource: CredentialDefinitionResource = {
+      _indyData: {
+        did: indyDid,
+      },
+      header: {
+        collectionId: cheqdDidIdentifier,
+        id: resourceId,
+        name: tag,
+        resourceType: 'CL-CredDef',
+      },
+      data: {
+        AnonCredsCredDef: { ...credentialDefinition, id: undefined, schemaId: schema.id },
+        AnonCredsObjectMetadata: {
+          objectFamily: 'anoncreds',
+          objectFamilyVersion: 'v2',
+          objectType: '3',
+          objectURI: `did:cheqd:testnet:${cheqdDidIdentifier}/resources/${resourceId}`,
+          publisherDid: `did:cheqd:testnet:${cheqdDidIdentifier}`,
+        },
+      },
+    } as const
+
+    resourceRegistry.credentialDefinitions[resource.data.AnonCredsObjectMetadata.objectURI] = resource
+
+    return indyCredentialDefinitionFromCredentialDefinitionResource(resource)
   }
 
-  // TODO-CHEQD: implement
-  public getCredentialDefinition(credentialDefinitionId: string): Promise<Indy.CredDef> {
-    throw new Error('Method not implemented.')
+  // TODO-CHEQD: integrate with cheqd sdk
+  public async getCredentialDefinition(credentialDefinitionId: string): Promise<Indy.CredDef> {
+    const resource = resourceRegistry.credentialDefinitions[credentialDefinitionId]
+
+    if (!resource) {
+      throw new AriesFrameworkError(`Credential definition with id ${credentialDefinitionId} not found`)
+    }
+
+    return indyCredentialDefinitionFromCredentialDefinitionResource(resource)
   }
 
   public getRevocationRegistryDefinition(
